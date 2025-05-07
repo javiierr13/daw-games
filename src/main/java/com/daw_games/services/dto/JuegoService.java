@@ -1,5 +1,6 @@
 package com.daw_games.services.dto;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.daw_games.persistence.entities.Juego;
 import com.daw_games.persistence.entities.enums.TipoJuego;
 import com.daw_games.persistence.repositories.JuegoRepository;
+import com.daw_games.services.exception.JuegoNotFoundException;
 
 @Service
 public class JuegoService {
@@ -22,6 +24,9 @@ public class JuegoService {
 
 	// Crear un nuevo juego
 	public Juego crearJuego(Juego juego) {
+		if (juego.getFechaLanzamiento() == null) {
+			juego.setFechaLanzamiento(LocalDate.now());
+		}
 		return juegoRepository.save(juego);
 	}
 
@@ -35,13 +40,19 @@ public class JuegoService {
 		return juegoRepository.findById(id);
 	}
 
-	// Modificar un juego
+	// Modificar un juego 
 	public Juego modificarJuego(Long id, Juego juego) {
-		if (juegoRepository.existsById(id)) {
-			juego.setId(id);
-			return juegoRepository.save(juego);
-		}
-		return null;
+		return juegoRepository.findById(id).map(existing -> {
+			existing.setNombre(juego.getNombre());
+			existing.setGenero(juego.getGenero());
+			existing.setPlataforma(juego.getPlataforma());
+			existing.setPrecio(juego.getPrecio());
+			existing.setFechaLanzamiento(juego.getFechaLanzamiento());
+			existing.setDescargas(juego.getDescargas());
+			existing.setTipo(juego.getTipo());
+			// No se modifica el campo "completado"
+			return juegoRepository.save(existing);
+		}).orElseThrow(() -> new JuegoNotFoundException("Juego con ID " + id + " no encontrado."));
 	}
 
 	// Borrar un juego
@@ -55,13 +66,18 @@ public class JuegoService {
 
 	// Marcar como completado
 	public Juego marcarComoCompletado(Long id) {
-		Optional<Juego> juegoOpt = juegoRepository.findById(id);
-		if (juegoOpt.isPresent()) {
-			Juego juego = juegoOpt.get();
+		return juegoRepository.findById(id).map(juego -> {
 			juego.setCompletado(true);
 			return juegoRepository.save(juego);
-		}
-		return null;
+		}).orElseThrow(() -> new JuegoNotFoundException("Juego con ID " + id + " no encontrado."));
+	}
+
+	// Desmarcar como completado
+	public Juego desmarcarComoCompletado(Long id) {
+		return juegoRepository.findById(id).map(juego -> {
+			juego.setCompletado(false);
+			return juegoRepository.save(juego);
+		}).orElseThrow(() -> new JuegoNotFoundException("Juego con ID " + id + " no encontrado."));
 	}
 
 	// Buscar juegos por nombre
@@ -81,7 +97,6 @@ public class JuegoService {
 
 	// Buscar juegos por tipo
 	public List<Juego> buscarPorTipo(String tipo) {
-		// Convertir el String a TipoJuego
 		try {
 			TipoJuego tipoJuego = TipoJuego.valueOf(tipo.toUpperCase());
 			return juegoRepository.findByTipo(tipoJuego);
@@ -90,12 +105,12 @@ public class JuegoService {
 		}
 	}
 
-	// Buscar juegos por precio
+	// Buscar juegos por rango de precios
 	public List<Juego> buscarPorPrecio(Double precioMin, Double precioMax) {
 		return juegoRepository.findByPrecioBetween(precioMin, precioMax);
 	}
 
-	// Buscar juegos populares (más de 1000 descargas)
+	// Buscar juegos con más de X descargas
 	public List<Juego> buscarPopulares(Integer descargas) {
 		return juegoRepository.findByDescargasGreaterThan(descargas);
 	}

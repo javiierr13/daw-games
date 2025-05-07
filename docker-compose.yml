@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: mariadb-daw-games
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: daw_games
+      MYSQL_USER: usuario
+      MYSQL_PASSWORD: 1234
+    ports:
+      - "3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin-daw-games
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mariadb-daw-games
+      PMA_PORT: 3306
+      PMA_USER: usuario
+      PMA_PASSWORD: 1234
+
+volumes:
+  mariadb_data:
